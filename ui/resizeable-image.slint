@@ -1,0 +1,26 @@
+// See https://github.com/slint-ui/slint/discussions/1331#discussioncomment-7120488
+
+// e.g.
+// ResizeableRectangle {
+//     preferred-width: 100px
+//     preferred-height: 100px
+//     ResiableImage {
+//         source: some-func(self.width, self.height);
+//     }
+// }
+
+export component ResizeableRectangle inherits Rectangle {
+    // See https://github.com/slint-ui/slint/discussions/1331#discussioncomment-7120488
+
+    // preferred-width: <Must set>
+    // preferred-height: <Must set>
+    min-width: 0px;
+    min-height: 0px;
+}
+
+export component ResizeableImage inherits Image {
+    x: 0;
+    y: 0;
+    width: 100%;
+    height: 100%;
+}

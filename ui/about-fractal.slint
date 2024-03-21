@@ -1,0 +1,51 @@
+import { VerticalBox, AboutSlint } from "std-widgets.slint";
+export component AboutFractal {
+    callback open-url(string);
+
+    Rectangle {
+        border-color: #cecece;
+        border-width: 1px;
+        background: black;
+        drop-shadow-color: #cecece;
+        drop-shadow-blur: 7px;
+        drop-shadow-offset-x: 5px;
+        drop-shadow-offset-y: 5px;
+    }
+
+    VerticalBox {
+        padding: 20px;
+
+        HorizontalLayout {
+            alignment: center;
+            Image {
+                source: @image-url("icon.png");
+                height: 120px;
+                width: 120px;
+            }
+        }
+
+        Text {
+            text: "Fractal Explorer";
+            horizontal-alignment: center;
+            font-size: 22px;
+        }
+
+        Text {
+            text: "github.com/.../fractal-explorer";
+            color: #4797ff;
+            font-size: 14px;
+            horizontal-alignment: center;
+            TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    open-url("https://github.com/boclair/fractal-explorer");
+                }
+            }
+        }
+
+
+        AboutSlint {
+            height: 100px;
+        }
+    }
+}

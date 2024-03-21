@@ -1,0 +1,247 @@
+import { HorizontalBox, Slider, VerticalBox, Button, AboutSlint } from "std-widgets.slint";
+import { IterationSlider } from "iteration-slider.slint";
+import { SlintViewport, ViewArea } from "view-area.slint";
+import { ResizeableImage, ResizeableRectangle } from "resizeable-image.slint";
+import { AboutFractal } from "about-fractal.slint";
+
+export struct JuliaConstant {
+    real: float,
+    imag: float
+}
+
+export global Constants {
+    out property <length> DEFAULT-IMAGE-WIDTH: 400px;
+    out property <length> DEFAULT-IMAGE-HEIGHT: 400px;
+    out property <int> DEFAULT-ITERATIONS: 30;
+    out property <SlintViewport> DEFAULT-MANDELBROT-VIEWPORT: { x1: -2.0, y1: 1.25, dx: 2.5, dy: -2.5 };
+    out property <SlintViewport> DEFAULT-JULIA-VIEWPORT: { x1: -2.0, y1: 2.0, dx: 4.0, dy: -4.0 };
+    out property <JuliaConstant> DEFAULT-JULIA-CONSTANT: { real: -0.534375, imag: -0.525 };
+    out property <brush> DEFAULT-GRADIENT: @radial-gradient(circle, #c82d41 0%, #d4ec1e 50%, #05e7f7 100%);
+
+    out property <length> POPUP-WIDTH: 260px;
+    out property <length> POPUP-HEIGHT: 380px;
+}
+
+export global Logic {
+    pure callback generate-julia(int, JuliaConstant, SlintViewport, length, length) -> image;
+    pure callback generate-mandelbrot(int, SlintViewport, length, length) -> image;
+    pure callback calculate-julia-constant(SlintViewport, length, length, length, length) -> JuliaConstant;
+    pure callback zoom-viewport(SlintViewport, length, length, length, length, length) -> SlintViewport;
+    pure callback open-url(string);
+    pure callback close();
+}
+
+global Global {
+    in-out property <bool> merged-display: false;
+    in-out property <bool> mandelbrot-panning: false;
+    in-out property <SlintViewport> mandelbrot-viewport: Constants.DEFAULT-MANDELBROT-VIEWPORT;
+    in-out property <int> mandelbrot-iterations: Constants.DEFAULT-ITERATIONS;
+
+    in-out property <SlintViewport> julia-viewport: Constants.DEFAULT-JULIA-VIEWPORT;
+    in-out property <int> julia-iterations: Constants.DEFAULT-ITERATIONS;
+    in-out property <JuliaConstant> julia-c: Constants.DEFAULT-JULIA-CONSTANT;
+}
+
+component ZoomingViewArea inherits ViewArea {
+    scroll-event(event) => {
+        self.viewport = Logic.zoom-viewport(self.viewport, event.delta-y, self.mouse-x, self.mouse-y, self.width, self.height);
+        EventResult.accept;
+    }
+}
+
+component SharedRectangle inherits ResizeableRectangle {
+    preferred-width: Constants.DEFAULT-IMAGE-WIDTH;
+    preferred-height: Constants.DEFAULT-IMAGE-HEIGHT;
+    background: Constants.DEFAULT-GRADIENT;
+    drop-shadow-color: white;
+    drop-shadow-blur: 7px;
+}
+
+component JuliaConstantDisplay {
+    x: 10px;
+    y: 10px;
+    
+    Rectangle {
+        background: black;
+    }
+    HorizontalLayout {
+        padding-left: 3px;
+        padding-right: 3px;
+        Text {
+            text: "c = " + Global.julia-c.real + " + " + Global.julia-c.imag + "i";
+            font-size: 15px;
+            color: blue;
+        }
+    }
+}
+
+component Fractals inherits HorizontalLayout {
+    states [
+        merged when Global.merged-display: {
+            mandelbrot-image.opacity: 0.5;
+        }
+        separate when !Global.merged-display: {
+            mandelbrot-image.opacity: 1.0;
+        }
+    ]
+
+    VerticalBox {
+        horizontal-stretch: 1;        
+        HorizontalLayout {
+            IterationSlider {
+                title: "Mandelbrot ";
+                int-value <=> Global.mandelbrot-iterations;
+            }
+            if Global.merged-display: IterationSlider {
+                title: "Julia ";
+                int-value <=> Global.julia-iterations;
+            }
+        } 
+        SharedRectangle {
+            if Global.merged-display: Rectangle {
+                ResizeableImage {
+                    source: Logic.generate-julia(Global.julia-iterations, Global.julia-c, Global.julia-viewport, self.width, self.height);
+                }
+                JuliaConstantDisplay { }
+            }
+
+            mandelbrot-image := ResizeableImage {                
+                source: Logic.generate-mandelbrot(Global.mandelbrot-iterations, Global.mandelbrot-viewport, self.width, self.height);
+                    
+                ZoomingViewArea {       
+                    viewport <=> Global.mandelbrot-viewport;
+                    enable-panning: Global.mandelbrot-panning;
+
+                    moved2 => {
+                        if !self.enable-panning {
+                            Global.julia-c = Logic.calculate-julia-constant(self.viewport, self.width, self.height, self.mouse-x, self.mouse-y);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if !Global.merged-display : VerticalBox {
+        horizontal-stretch: 1;        
+        IterationSlider {
+            title: "Julia ";
+            int-value <=> Global.julia-iterations;
+        }
+
+        SharedRectangle {
+            ResizeableImage {                
+                source: Logic.generate-julia(Global.julia-iterations, Global.julia-c, Global.julia-viewport, self.width, self.height);
+                            
+                ZoomingViewArea {
+                    viewport <=> Global.julia-viewport;
+                }
+            }
+
+            JuliaConstantDisplay { }
+        }
+    }
+
+}
+
+component MergeToggleButton inherits Button {
+    in-out property <length> window-width;
+    property <int> opacity_counter: 0;
+
+    text: Global.merged-display ? "Merged" : "Separate";
+
+    clicked => { 
+        // Resizing the width creates some strange visual artifacts.
+        // Use the opacity_counter and annimation easing between 0 and 100 to set
+        // opacity to 0 during that interval.
+        if Global.merged-display {
+            Global.merged-display = false;
+            self.window-width = self.window-width * 2.0;
+            self.opacity_counter = 0;
+        } else {
+            Global.merged-display = true;
+            self.window-width = self.window-width * 0.5;
+            self.opacity_counter = 100;
+        }
+    }
+
+    states [
+        black when opacity_counter > 0 && opacity_counter < 100: {
+            opacity: 0.0;
+        }
+        visible when opacity_counter == 0 || opacity_counter == 100: {
+            opacity: 1.0;
+        }
+    ]
+
+    animate opacity_counter {
+        duration: 300ms;
+        easing: linear;         
+    }
+}
+
+
+export component MainWindow inherits Window {
+    title: "Fractal Explorer";
+    background: #222222;
+    icon: @image-url("icon.png");
+    
+    forward-focus: key-handler;
+    no-frame: false;
+
+    about-fractal := PopupWindow {
+        x: root.width * 50% - (Constants.POPUP-WIDTH / 2);
+        y: root.height * 50% - (Constants.POPUP-HEIGHT / 2);
+        af := AboutFractal {
+            open-url(url) => { Logic.open-url(url); }
+            width: Constants.POPUP-WIDTH;
+            height: Constants.POPUP-HEIGHT;
+         }
+    }
+
+    VerticalLayout {        
+        padding: 10px;
+        opacity: mtb.opacity;
+
+        HorizontalBox {
+            vertical-stretch: 0;
+            Text {
+                text: "Toggles: ";
+                vertical-alignment: center;
+            }
+            mtb := MergeToggleButton { 
+                window-width <=> root.width;
+            }
+            Button {
+                text: Global.mandelbrot-panning ? "Panning" : "Julia-C";
+                clicked => { 
+                    Global.mandelbrot-panning = !Global.mandelbrot-panning;
+                 }
+            }
+            Rectangle { 
+                horizontal-stretch: 1;
+            }
+            Button {
+                text: "About";
+                clicked => { about-fractal.show(); }
+            }
+            Button {
+                text: "Quit";
+                clicked => { Logic.close(); }
+            }
+        }
+        fractals := HorizontalLayout {
+            vertical-stretch: 1;
+            Fractals { }
+        }
+    }
+
+    key-handler := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape || event.text == "q") {
+                Logic.close();
+            }
+            EventResult.accept;
+        }
+    }
+}

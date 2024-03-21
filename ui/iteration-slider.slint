@@ -1,0 +1,44 @@
+import { Slider } from "std-widgets.slint";
+
+export component IterationSlider inherits HorizontalLayout {
+    in property <string> title;
+    in-out property <int> int-value;
+    
+    HorizontalLayout {
+        preferred-width: 100%;
+
+        Text {
+            text: title + "Iterations: ";
+            font-size: 15px;
+            color: white;
+            height: 20px;
+        }
+        Text {
+            text: int-value;
+            font-size: 15px;
+            color: white;
+            height: 20px;
+            min-width: 30px;
+        }
+        slider := Slider {
+            width: 200px;
+            height: 20px;
+            minimum: 1;
+            maximum: 500;
+            horizontal-stretch: 0;        
+            value: int-value;
+
+            changed => {
+                // clickdown and clickup are causing two different changed events with the slider.value only
+                // slightly different (e.g. +- 0.0001).
+                if (int-value != floor(slider.value)) {
+                    int-value = floor(slider.value);
+                }
+            }
+        }
+        Rectangle {
+            preferred-width: 100%;
+            horizontal-stretch: 1;
+        }
+    }
+}
