@@ -11,4 +11,7 @@ More information on these types of Fractals:
 * [Julia Set](https://en.wikipedia.org/wiki/Julia_set)
 * [Mandelbrot Set](https://en.wikipedia.org/wiki/Mandelbrot_set)
 
+**Web demo**: https://boclair.github.io/fractal-explorer/
+
+Desktop image:
 ![image](https://github.com/boclair/fractal-explorer/assets/154125/9d617898-61bc-4fad-813e-229b93b54852)
